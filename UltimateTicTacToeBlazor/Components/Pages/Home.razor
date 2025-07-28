@@ -14,7 +14,8 @@
                 <span>Current Player: <strong>@game.CurrentPlayer</strong></span>
                 @if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
                 {
-                    <span class="next-board">| Must play in board (@(game.NextBoardRow.Value + 1), @(game.NextBoardCol.Value + 1))</span>
+                    var boardPosition = GetBoardPositionName(game.NextBoardRow.Value, game.NextBoardCol.Value);
+                    <span class="next-board">| Must play in <strong class="board-location">@boardPosition</strong> board</span>
                 }
             }
             else if (game.State == BoardState.WonByX)
@@ -144,5 +145,22 @@
     private void ResetGame()
     {
         game = new UltimateBoard();
+    }
+
+    private string GetBoardPositionName(int row, int col)
+    {
+        return (row, col) switch
+        {
+            (0, 0) => "upper left",
+            (0, 1) => "upper middle",
+            (0, 2) => "upper right",
+            (1, 0) => "middle left",
+            (1, 1) => "center",
+            (1, 2) => "middle right",
+            (2, 0) => "lower left",
+            (2, 1) => "lower middle",
+            (2, 2) => "lower right",
+            _ => "unknown"
+        };
     }
 }

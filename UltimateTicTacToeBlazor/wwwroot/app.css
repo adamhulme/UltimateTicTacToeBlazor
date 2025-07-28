@@ -89,6 +89,13 @@ h1:focus {
     margin-left: 10px;
 }
 
+.board-location {
+    color: #dc3545;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+}
+
 .reset-btn {
     padding: 10px 20px;
     font-size: 1rem;
