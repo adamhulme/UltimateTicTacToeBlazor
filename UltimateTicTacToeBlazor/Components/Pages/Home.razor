@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using UltimateTicTacToe.Models
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>Ultimate Tic Tac Toe</PageTitle>
 
@@ -21,6 +22,41 @@
                     <input id="playerO" @bind="playerOName" placeholder="Enter Player O name" maxlength="20" />
                 </div>
             </div>
+            
+            <div class="game-mode-selection">
+                <h4>Game Mode</h4>
+                <div class="mode-options">
+                    <div class="mode-option">
+                        <input type="radio" id="unlimited" name="gameMode" value="Unlimited" @onchange="() => selectedGameMode = GameMode.Unlimited" checked="@(selectedGameMode == GameMode.Unlimited)" />
+                        <label for="unlimited">
+                            <strong>Unlimited Time</strong>
+                            <small>Take as long as you need</small>
+                        </label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="blitz" name="gameMode" value="Blitz" @onchange="() => selectedGameMode = GameMode.Blitz" checked="@(selectedGameMode == GameMode.Blitz)" />
+                        <label for="blitz">
+                            <strong>Blitz</strong>
+                            <small>30 seconds per move</small>
+                        </label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="rapid" name="gameMode" value="Rapid" @onchange="() => selectedGameMode = GameMode.Rapid" checked="@(selectedGameMode == GameMode.Rapid)" />
+                        <label for="rapid">
+                            <strong>Rapid</strong>
+                            <small>60 seconds per move</small>
+                        </label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="classical" name="gameMode" value="Classical" @onchange="() => selectedGameMode = GameMode.Classical" checked="@(selectedGameMode == GameMode.Classical)" />
+                        <label for="classical">
+                            <strong>Classical</strong>
+                            <small>3 minutes per move</small>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
             <button class="btn btn-success start-game-btn" @onclick="StartGame" disabled="@(string.IsNullOrWhiteSpace(playerXName) || string.IsNullOrWhiteSpace(playerOName))">
                 Start Game
             </button>
@@ -46,6 +82,15 @@
                 {
                     var currentPlayerName = game.CurrentPlayer == CellState.X ? playerXName : playerOName;
                     <span>Current Player: <strong>@currentPlayerName (@game.CurrentPlayer)</strong></span>
+                    
+                    @if (selectedGameMode != GameMode.Unlimited)
+                    {
+                        <div class="timer-display">
+                            <span class="timer-label">Time remaining:</span>
+                            <span class="timer-value @GetTimerClass()">@FormatTime(remainingTime)</span>
+                        </div>
+                    }
+                    
                     @if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
                     {
                         var boardPosition = GetBoardPositionName(game.NextBoardRow.Value, game.NextBoardCol.Value);
@@ -140,12 +185,19 @@
     private int playerXScore = 0;
     private int playerOScore = 0;
     private CellState nextGameStarter = CellState.X; // Track who should start the next game
+    private GameMode selectedGameMode = GameMode.Unlimited;
+    
+    // Timer-related variables
+    private Timer? moveTimer;
+    private int remainingTime = 0;
+    private bool isTimerRunning = false;
 
     private void StartGame()
     {
         gameStarted = true;
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
+        StartMoveTimer();
     }
 
     private void BackToSetup()
@@ -153,12 +205,26 @@
         gameStarted = false;
         game = new UltimateBoard();
         nextGameStarter = CellState.X; // Reset to X when changing players
+        StopTimer();
     }
 
     private void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
     {
         var previousState = game.State;
         bool success = game.MakeMove(boardRow, boardCol, cellRow, cellCol);
+        
+        if (success)
+        {
+            // Reset timer for next player
+            if (selectedGameMode != GameMode.Unlimited && game.State == BoardState.Active)
+            {
+                StartMoveTimer();
+            }
+            else if (game.State != BoardState.Active)
+            {
+                StopTimer();
+            }
+        }
         
         // Check if the game just ended and update scores
         if (success && previousState == BoardState.Active && game.State != BoardState.Active)
@@ -175,6 +241,104 @@
             // Swap the starting player for the next game
             nextGameStarter = nextGameStarter == CellState.X ? CellState.O : CellState.X;
         }
+    }
+
+    private void StartMoveTimer()
+    {
+        StopTimer(); // Stop any existing timer
+        
+        if (selectedGameMode == GameMode.Unlimited) return;
+        
+        remainingTime = GetTimeLimit();
+        isTimerRunning = true;
+        
+        moveTimer = new Timer(async _ =>
+        {
+            if (remainingTime > 0 && isTimerRunning && game.State == BoardState.Active)
+            {
+                remainingTime--;
+                await InvokeAsync(StateHasChanged);
+            }
+            else if (remainingTime <= 0 && isTimerRunning && game.State == BoardState.Active)
+            {
+                // Time's up - make a random valid move
+                await InvokeAsync(() =>
+                {
+                    TimeOutMove();
+                });
+            }
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private void StopTimer()
+    {
+        isTimerRunning = false;
+        moveTimer?.Dispose();
+        moveTimer = null;
+    }
+
+    private int GetTimeLimit()
+    {
+        return selectedGameMode switch
+        {
+            GameMode.Blitz => 30,
+            GameMode.Rapid => 60,
+            GameMode.Classical => 180,
+            _ => 0
+        };
+    }
+
+    private void TimeOutMove()
+    {
+        // Find a random valid move
+        var validMoves = new List<(int boardRow, int boardCol, int cellRow, int cellCol)>();
+        
+        for (int boardRow = 0; boardRow < 3; boardRow++)
+        {
+            for (int boardCol = 0; boardCol < 3; boardCol++)
+            {
+                for (int cellRow = 0; cellRow < 3; cellRow++)
+                {
+                    for (int cellCol = 0; cellCol < 3; cellCol++)
+                    {
+                        if (CanMakeMove(boardRow, boardCol, cellRow, cellCol))
+                        {
+                            validMoves.Add((boardRow, boardCol, cellRow, cellCol));
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (validMoves.Count > 0)
+        {
+            var random = new Random();
+            var randomMove = validMoves[random.Next(validMoves.Count)];
+            MakeMove(randomMove.boardRow, randomMove.boardCol, randomMove.cellRow, randomMove.cellCol);
+        }
+        
+        StateHasChanged();
+    }
+
+    private string FormatTime(int seconds)
+    {
+        if (seconds >= 60)
+        {
+            int minutes = seconds / 60;
+            int remainingSeconds = seconds % 60;
+            return $"{minutes}:{remainingSeconds:D2}";
+        }
+        return seconds.ToString();
+    }
+
+    private string GetTimerClass()
+    {
+        if (remainingTime <= 5)
+            return "timer-critical";
+        else if (remainingTime <= 10)
+            return "timer-warning";
+        else
+            return "timer-normal";
     }
 
     private bool CanMakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
@@ -230,6 +394,7 @@
     {
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
+        StartMoveTimer();
     }
 
     private string GetBoardPositionName(int row, int col)
@@ -247,5 +412,10 @@
             (2, 2) => "lower right",
             _ => "unknown"
         };
+    }
+
+    public void Dispose()
+    {
+        StopTimer();
     }
 }

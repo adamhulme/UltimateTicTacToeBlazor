@@ -123,6 +123,129 @@ h1:focus {
     font-weight: bold;
 }
 
+/* Game Mode Selection Styles */
+.game-mode-selection {
+    margin: 25px 0;
+    text-align: center;
+}
+
+.game-mode-selection h4 {
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.2rem;
+}
+
+.mode-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.mode-option {
+    position: relative;
+}
+
+.mode-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.mode-option label {
+    display: block;
+    padding: 15px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    background-color: #ffffff;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.mode-option label:hover {
+    border-color: #007bff;
+    background-color: #f8f9ff;
+}
+
+.mode-option input[type="radio"]:checked + label {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.mode-option label strong {
+    display: block;
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.mode-option label small {
+    display: block;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+/* Timer Display Styles */
+.timer-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0;
+    padding: 10px 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #dee2e6;
+}
+
+.timer-label {
+    font-weight: bold;
+    color: #555;
+    font-size: 1rem;
+}
+
+.timer-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 5px 15px;
+    border-radius: 5px;
+    min-width: 80px;
+    text-align: center;
+}
+
+.timer-normal {
+    background-color: #d4edda;
+    color: #155724;
+    border: 2px solid #c3e6cb;
+}
+
+.timer-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 2px solid #ffeaa7;
+    animation: pulse-warning 1s infinite;
+}
+
+.timer-critical {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 2px solid #f5c6cb;
+    animation: pulse-critical 0.5s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes pulse-critical {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
 /* Scoreboard Styles */
 .scoreboard {
     display: flex;
