@@ -49,3 +49,207 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+/* Ultimate Tic Tac Toe Game Styles */
+.game-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.status {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.winner {
+    color: #28a745;
+    font-size: 1.4rem;
+}
+
+.draw {
+    color: #6c757d;
+    font-size: 1.2rem;
+}
+
+.next-board {
+    color: #007bff;
+    font-size: 1rem;
+    margin-left: 10px;
+}
+
+.reset-btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+}
+
+.ultimate-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    border: 3px solid #333;
+}
+
+.small-board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 3px;
+    background-color: #333;
+    border-radius: 8px;
+    padding: 5px;
+    min-height: 150px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.small-board.active-board {
+    background-color: #007bff;
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+    transform: scale(1.02);
+}
+
+.small-board.won-by-x {
+    background-color: #28a745;
+}
+
+.small-board.won-by-o {
+    background-color: #dc3545;
+}
+
+.small-board.draw {
+    background-color: #6c757d;
+}
+
+.cell {
+    background-color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cell:hover:not(:disabled) {
+    background-color: #e9ecef;
+    transform: scale(1.05);
+}
+
+.cell:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.cell.x {
+    color: #007bff;
+}
+
+.cell.o {
+    color: #dc3545;
+}
+
+.cell.disabled {
+    background-color: #f8f9fa;
+}
+
+.board-winner, .board-draw {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    font-weight: bold;
+    color: white;
+    background-color: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    z-index: 10;
+}
+
+.board-winner {
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.board-draw {
+    font-size: 1.5rem;
+    color: #fff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .game-container {
+        padding: 10px;
+    }
+    
+    .ultimate-board {
+        gap: 10px;
+        padding: 15px;
+        max-width: 100%;
+    }
+    
+    .small-board {
+        min-height: 120px;
+    }
+    
+    .cell {
+        min-height: 35px;
+        font-size: 1.4rem;
+    }
+    
+    .board-winner {
+        font-size: 3rem;
+    }
+    
+    .game-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .status {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .ultimate-board {
+        gap: 8px;
+        padding: 10px;
+    }
+    
+    .small-board {
+        min-height: 100px;
+        gap: 2px;
+    }
+    
+    .cell {
+        min-height: 30px;
+        font-size: 1.2rem;
+    }
+    
+    .board-winner {
+        font-size: 2.5rem;
+    }
+}

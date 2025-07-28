@@ -1,7 +1,148 @@
 ﻿@page "/"
+@using UltimateTicTacToe.Models
+@rendermode InteractiveServer
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Ultimate Tic Tac Toe</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="game-container">
+    <h1>Ultimate Tic Tac Toe</h1>
+    
+    <div class="game-info">
+        <div class="status">
+            @if (game.State == BoardState.Active)
+            {
+                <span>Current Player: <strong>@game.CurrentPlayer</strong></span>
+                @if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
+                {
+                    <span class="next-board">| Must play in board (@(game.NextBoardRow.Value + 1), @(game.NextBoardCol.Value + 1))</span>
+                }
+            }
+            else if (game.State == BoardState.WonByX)
+            {
+                <span class="winner">🎉 Player X Wins! 🎉</span>
+            }
+            else if (game.State == BoardState.WonByO)
+            {
+                <span class="winner">🎉 Player O Wins! 🎉</span>
+            }
+            else
+            {
+                <span class="draw">Game ended in a draw!</span>
+            }
+        </div>
+        
+        <button class="btn btn-primary reset-btn" @onclick="ResetGame">New Game</button>
+    </div>
 
-Welcome to your new app.
+    <div class="ultimate-board">
+        @for (int boardRow = 0; boardRow < 3; boardRow++)
+        {
+            @for (int boardCol = 0; boardCol < 3; boardCol++)
+            {
+                var currentBoardRow = boardRow;
+                var currentBoardCol = boardCol;
+                var board = game.Boards[boardRow, boardCol];
+                var isActiveBoard = !game.NextBoardRow.HasValue || 
+                                  (game.NextBoardRow == boardRow && game.NextBoardCol == boardCol);
+                var boardClass = GetBoardClass(board, isActiveBoard);
+                
+                <div class="small-board @boardClass">
+                    @if (board.State == BoardState.WonByX)
+                    {
+                        <div class="board-winner">X</div>
+                    }
+                    else if (board.State == BoardState.WonByO)
+                    {
+                        <div class="board-winner">O</div>
+                    }
+                    else if (board.State == BoardState.Draw)
+                    {
+                        <div class="board-draw">Draw</div>
+                    }
+                    else
+                    {
+                        @for (int cellRow = 0; cellRow < 3; cellRow++)
+                        {
+                            @for (int cellCol = 0; cellCol < 3; cellCol++)
+                            {
+                                var currentCellRow = cellRow;
+                                var currentCellCol = cellCol;
+                                var cell = board.Cells[cellRow, cellCol];
+                                var cellClass = GetCellClass(cell, isActiveBoard && game.State == BoardState.Active);
+                                
+                                <button class="cell @cellClass" 
+                                        @onclick="() => MakeMove(currentBoardRow, currentBoardCol, currentCellRow, currentCellCol)"
+                                        disabled="@(!CanMakeMove(currentBoardRow, currentBoardCol, currentCellRow, currentCellCol))">
+                                    @GetCellDisplay(cell.State)
+                                </button>
+                            }
+                        }
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private UltimateBoard game = new UltimateBoard();
+
+    private void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
+    {
+        game.MakeMove(boardRow, boardCol, cellRow, cellCol);
+    }
+
+    private bool CanMakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
+    {
+        if (game.State != BoardState.Active) return false;
+        if (game.Boards[boardRow, boardCol].State != BoardState.Active) return false;
+        if (game.Boards[boardRow, boardCol].Cells[cellRow, cellCol].State != CellState.Empty) return false;
+        
+        if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
+        {
+            return boardRow == game.NextBoardRow.Value && boardCol == game.NextBoardCol.Value;
+        }
+        
+        return true;
+    }
+
+    private string GetBoardClass(SmallBoard board, bool isActive)
+    {
+        var classes = new List<string>();
+        
+        if (board.State == BoardState.WonByX) classes.Add("won-by-x");
+        else if (board.State == BoardState.WonByO) classes.Add("won-by-o");
+        else if (board.State == BoardState.Draw) classes.Add("draw");
+        
+        if (isActive && game.State == BoardState.Active) classes.Add("active-board");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetCellClass(Cell cell, bool isInteractable)
+    {
+        var classes = new List<string>();
+        
+        if (cell.State == CellState.X) classes.Add("x");
+        else if (cell.State == CellState.O) classes.Add("o");
+        
+        if (!isInteractable) classes.Add("disabled");
+        
+        return string.Join(" ", classes);
+    }
+
+    private string GetCellDisplay(CellState state)
+    {
+        return state switch
+        {
+            CellState.X => "X",
+            CellState.O => "O",
+            _ => ""
+        };
+    }
+
+    private void ResetGame()
+    {
+        game = new UltimateBoard();
+    }
+}

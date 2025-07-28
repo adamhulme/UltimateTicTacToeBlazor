@@ -106,10 +106,7 @@ public class UltimateBoard
     }
     private void SwapCurrentPlayer()
     {
-        if (CurrentPlayer == CellState.X)
-            CurrentPlayer = CellState.O;
-        if (CurrentPlayer == CellState.O)
-            CurrentPlayer = CellState.X;
+        CurrentPlayer = CurrentPlayer == CellState.X ? CellState.O : CellState.X;
     }
 
     private void SetWinner(CellState winner)
