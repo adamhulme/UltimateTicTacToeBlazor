@@ -54,15 +54,24 @@
                 }
                 else if (game.State == BoardState.WonByX)
                 {
+                    var nextStarterName = nextGameStarter == CellState.X ? playerXName : playerOName;
                     <span class="winner">🎉 @playerXName Wins! 🎉</span>
+                    <br />
+                    <span class="next-starter">@nextStarterName will start the next game</span>
                 }
                 else if (game.State == BoardState.WonByO)
                 {
+                    var nextStarterName = nextGameStarter == CellState.X ? playerXName : playerOName;
                     <span class="winner">🎉 @playerOName Wins! 🎉</span>
+                    <br />
+                    <span class="next-starter">@nextStarterName will start the next game</span>
                 }
                 else
                 {
+                    var nextStarterName = nextGameStarter == CellState.X ? playerXName : playerOName;
                     <span class="draw">Game ended in a draw!</span>
+                    <br />
+                    <span class="next-starter">@nextStarterName will start the next game</span>
                 }
             </div>
             
@@ -130,17 +139,20 @@
     private string playerOName = "";
     private int playerXScore = 0;
     private int playerOScore = 0;
+    private CellState nextGameStarter = CellState.X; // Track who should start the next game
 
     private void StartGame()
     {
         gameStarted = true;
         game = new UltimateBoard();
+        game.SetStartingPlayer(nextGameStarter);
     }
 
     private void BackToSetup()
     {
         gameStarted = false;
         game = new UltimateBoard();
+        nextGameStarter = CellState.X; // Reset to X when changing players
     }
 
     private void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
@@ -159,6 +171,9 @@
             {
                 playerOScore++;
             }
+            
+            // Swap the starting player for the next game
+            nextGameStarter = nextGameStarter == CellState.X ? CellState.O : CellState.X;
         }
     }
 
@@ -214,6 +229,7 @@
     private void ResetGame()
     {
         game = new UltimateBoard();
+        game.SetStartingPlayer(nextGameStarter);
     }
 
     private string GetBoardPositionName(int row, int col)

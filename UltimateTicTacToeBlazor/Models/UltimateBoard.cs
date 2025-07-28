@@ -124,4 +124,9 @@ public class UltimateBoard
 
         return true;
     }
+
+    public void SetStartingPlayer(CellState startingPlayer)
+    {
+        CurrentPlayer = startingPlayer;
+    }
 }

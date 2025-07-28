@@ -195,6 +195,13 @@ h1:focus {
     font-size: 1.2rem;
 }
 
+.next-starter {
+    color: #28a745;
+    font-size: 1rem;
+    font-weight: bold;
+    margin-top: 5px;
+}
+
 .next-board {
     color: #007bff;
     font-size: 1rem;
