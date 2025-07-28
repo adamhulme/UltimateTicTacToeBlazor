@@ -7,35 +7,72 @@
 <div class="game-container">
     <h1>Ultimate Tic Tac Toe</h1>
     
-    <div class="game-info">
-        <div class="status">
-            @if (game.State == BoardState.Active)
-            {
-                <span>Current Player: <strong>@game.CurrentPlayer</strong></span>
-                @if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
-                {
-                    var boardPosition = GetBoardPositionName(game.NextBoardRow.Value, game.NextBoardCol.Value);
-                    <span class="next-board">| Must play in <strong class="board-location">@boardPosition</strong> board</span>
-                }
-            }
-            else if (game.State == BoardState.WonByX)
-            {
-                <span class="winner">🎉 Player X Wins! 🎉</span>
-            }
-            else if (game.State == BoardState.WonByO)
-            {
-                <span class="winner">🎉 Player O Wins! 🎉</span>
-            }
-            else
-            {
-                <span class="draw">Game ended in a draw!</span>
-            }
+    @if (!gameStarted)
+    {
+        <div class="player-setup">
+            <h3>Player Setup</h3>
+            <div class="player-inputs">
+                <div class="player-input">
+                    <label for="playerX">Player X Name:</label>
+                    <input id="playerX" @bind="playerXName" placeholder="Enter Player X name" maxlength="20" />
+                </div>
+                <div class="player-input">
+                    <label for="playerO">Player O Name:</label>
+                    <input id="playerO" @bind="playerOName" placeholder="Enter Player O name" maxlength="20" />
+                </div>
+            </div>
+            <button class="btn btn-success start-game-btn" @onclick="StartGame" disabled="@(string.IsNullOrWhiteSpace(playerXName) || string.IsNullOrWhiteSpace(playerOName))">
+                Start Game
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="scoreboard">
+            <div class="player-score">
+                <span class="player-name">@playerXName (X)</span>
+                <span class="score">@playerXScore</span>
+            </div>
+            <div class="score-separator">-</div>
+            <div class="player-score">
+                <span class="player-name">@playerOName (O)</span>
+                <span class="score">@playerOScore</span>
+            </div>
         </div>
         
-        <button class="btn btn-primary reset-btn" @onclick="ResetGame">New Game</button>
-    </div>
+        <div class="game-info">
+            <div class="status">
+                @if (game.State == BoardState.Active)
+                {
+                    var currentPlayerName = game.CurrentPlayer == CellState.X ? playerXName : playerOName;
+                    <span>Current Player: <strong>@currentPlayerName (@game.CurrentPlayer)</strong></span>
+                    @if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
+                    {
+                        var boardPosition = GetBoardPositionName(game.NextBoardRow.Value, game.NextBoardCol.Value);
+                        <span class="next-board">| Must play in <strong class="board-location">@boardPosition</strong> board</span>
+                    }
+                }
+                else if (game.State == BoardState.WonByX)
+                {
+                    <span class="winner">🎉 @playerXName Wins! 🎉</span>
+                }
+                else if (game.State == BoardState.WonByO)
+                {
+                    <span class="winner">🎉 @playerOName Wins! 🎉</span>
+                }
+                else
+                {
+                    <span class="draw">Game ended in a draw!</span>
+                }
+            </div>
+            
+            <div class="game-buttons">
+                <button class="btn btn-primary reset-btn" @onclick="ResetGame">New Game</button>
+                <button class="btn btn-secondary setup-btn" @onclick="BackToSetup">Change Players</button>
+            </div>
+        </div>
 
-    <div class="ultimate-board">
+        <div class="ultimate-board">
         @for (int boardRow = 0; boardRow < 3; boardRow++)
         {
             @for (int boardCol = 0; boardCol < 3; boardCol++)
@@ -83,14 +120,46 @@
             }
         }
     </div>
+    }
 </div>
 
 @code {
     private UltimateBoard game = new UltimateBoard();
+    private bool gameStarted = false;
+    private string playerXName = "";
+    private string playerOName = "";
+    private int playerXScore = 0;
+    private int playerOScore = 0;
+
+    private void StartGame()
+    {
+        gameStarted = true;
+        game = new UltimateBoard();
+    }
+
+    private void BackToSetup()
+    {
+        gameStarted = false;
+        game = new UltimateBoard();
+    }
 
     private void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
     {
-        game.MakeMove(boardRow, boardCol, cellRow, cellCol);
+        var previousState = game.State;
+        bool success = game.MakeMove(boardRow, boardCol, cellRow, cellCol);
+        
+        // Check if the game just ended and update scores
+        if (success && previousState == BoardState.Active && game.State != BoardState.Active)
+        {
+            if (game.State == BoardState.WonByX)
+            {
+                playerXScore++;
+            }
+            else if (game.State == BoardState.WonByO)
+            {
+                playerOScore++;
+            }
+        }
     }
 
     private bool CanMakeMove(int boardRow, int boardCol, int cellRow, int cellCol)

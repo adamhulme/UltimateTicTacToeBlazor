@@ -67,6 +67,118 @@ h1:focus {
     gap: 15px;
 }
 
+/* Player Setup Styles */
+.player-setup {
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 30px;
+    margin-bottom: 30px;
+    text-align: center;
+    border: 2px solid #dee2e6;
+}
+
+.player-setup h3 {
+    margin-bottom: 25px;
+    color: #333;
+}
+
+.player-inputs {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.player-input {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.player-input label {
+    font-weight: bold;
+    color: #555;
+}
+
+.player-input input {
+    padding: 10px 15px;
+    border: 2px solid #ced4da;
+    border-radius: 5px;
+    font-size: 1rem;
+    width: 200px;
+    text-align: center;
+}
+
+.player-input input:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.start-game-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+/* Scoreboard Styles */
+.scoreboard {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 20px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    padding: 15px 30px;
+    border: 2px solid #dee2e6;
+    gap: 30px;
+}
+
+.player-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.player-name {
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #333;
+}
+
+.score {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #007bff;
+    background-color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 2px solid #007bff;
+    min-width: 60px;
+    text-align: center;
+}
+
+.score-separator {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #6c757d;
+}
+
+/* Game Buttons */
+.game-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.setup-btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+}
+
 .status {
     font-size: 1.2rem;
     font-weight: bold;
