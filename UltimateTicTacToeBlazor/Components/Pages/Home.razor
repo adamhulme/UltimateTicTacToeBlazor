@@ -1,5 +1,8 @@
 ﻿@page "/"
 @using UltimateTicTacToe.Models
+@using UltimateTicTacToe.AI
+@inject BotService BotService
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -14,12 +17,68 @@
             <h3>Player Setup</h3>
             <div class="player-inputs">
                 <div class="player-input">
-                    <label for="playerX">Player X Name:</label>
-                    <input id="playerX" @bind="playerXName" placeholder="Enter Player X name" maxlength="20" />
+                    <label for="playerX">Player X:</label>
+                    <div class="player-type-selection">
+                        <select @bind="playerXType" class="player-type-select">
+                            <option value="human">Human Player</option>
+                            <option value="bot">AI Bot</option>
+                        </select>
+                        @if (playerXType == "human")
+                        {
+                            <input id="playerX" @bind="playerXName" placeholder="Enter Player X name" maxlength="20" />
+                        }
+                        else
+                        {
+                            <select @bind="selectedXBot" class="bot-select">
+                                <option value="">Select AI Bot</option>
+                                @foreach (var bot in availableBots)
+                                {
+                                    <option value="@bot.Key">@bot.Value.Name</option>
+                                }
+                            </select>
+                            @if (!string.IsNullOrEmpty(selectedXBot))
+                            {
+                                <select @bind="xBotDifficulty" class="difficulty-select">
+                                    <option value="Easy">Easy</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Hard">Hard</option>
+                                    <option value="Expert">Expert</option>
+                                </select>
+                            }
+                        }
+                    </div>
                 </div>
                 <div class="player-input">
-                    <label for="playerO">Player O Name:</label>
-                    <input id="playerO" @bind="playerOName" placeholder="Enter Player O name" maxlength="20" />
+                    <label for="playerO">Player O:</label>
+                    <div class="player-type-selection">
+                        <select @bind="playerOType" class="player-type-select">
+                            <option value="human">Human Player</option>
+                            <option value="bot">AI Bot</option>
+                        </select>
+                        @if (playerOType == "human")
+                        {
+                            <input id="playerO" @bind="playerOName" placeholder="Enter Player O name" maxlength="20" />
+                        }
+                        else
+                        {
+                            <select @bind="selectedOBot" class="bot-select">
+                                <option value="">Select AI Bot</option>
+                                @foreach (var bot in availableBots)
+                                {
+                                    <option value="@bot.Key">@bot.Value.Name</option>
+                                }
+                            </select>
+                            @if (!string.IsNullOrEmpty(selectedOBot))
+                            {
+                                <select @bind="oBotDifficulty" class="difficulty-select">
+                                    <option value="Easy">Easy</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Hard">Hard</option>
+                                    <option value="Expert">Expert</option>
+                                </select>
+                            }
+                        }
+                    </div>
                 </div>
             </div>
             
@@ -57,7 +116,7 @@
                 </div>
             </div>
             
-            <button class="btn btn-success start-game-btn" @onclick="StartGame" disabled="@(string.IsNullOrWhiteSpace(playerXName) || string.IsNullOrWhiteSpace(playerOName))">
+            <button class="btn btn-success start-game-btn" @onclick="StartGame" disabled="@(!IsStartGameEnabled())">
                 Start Game
             </button>
         </div>
@@ -81,9 +140,16 @@
                 @if (game.State == BoardState.Active)
                 {
                     var currentPlayerName = game.CurrentPlayer == CellState.X ? playerXName : playerOName;
-                    <span>Current Player: <strong>@currentPlayerName (@game.CurrentPlayer)</strong></span>
+                    if (isBotThinking)
+                    {
+                        <span>🤖 <strong>@currentPlayerName</strong> is thinking...</span>
+                    }
+                    else
+                    {
+                        <span>Current Player: <strong>@currentPlayerName (@game.CurrentPlayer)</strong></span>
+                    }
                     
-                    @if (selectedGameMode != GameMode.Unlimited)
+                    @if (selectedGameMode != GameMode.Unlimited && !isBotThinking)
                     {
                         <div class="timer-display">
                             <span class="timer-label">Time remaining:</span>
@@ -187,17 +253,108 @@
     private CellState nextGameStarter = CellState.X; // Track who should start the next game
     private GameMode selectedGameMode = GameMode.Unlimited;
     
+    // Bot-related variables
+    private Dictionary<string, BotInfo> availableBots = new();
+    private string playerXType = "human";
+    private string playerOType = "human";
+    private string selectedXBot = "";
+    private string selectedOBot = "";
+    private string xBotDifficulty = "Medium";
+    private string oBotDifficulty = "Medium";
+    private AlphaZeroBot? xBot;
+    private AlphaZeroBot? oBot;
+    private bool isBotThinking = false;
+    
     // Timer-related variables
     private Timer? moveTimer;
     private int remainingTime = 0;
     private bool isTimerRunning = false;
 
-    private void StartGame()
+    protected override async Task OnInitializedAsync()
     {
+        availableBots = BotService.GetAvailableBots();
+        
+        // Check if bot was selected from bot management page
+        try
+        {
+            var selectedBot = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "selectedBot");
+            var selectedDifficulty = await JSRuntime.InvokeAsync<string?>("sessionStorage.getItem", "selectedDifficulty");
+            
+            if (!string.IsNullOrEmpty(selectedBot))
+            {
+                playerOType = "bot";
+                selectedOBot = selectedBot;
+                oBotDifficulty = selectedDifficulty ?? "Medium";
+                
+                // Clear session storage
+                await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "selectedBot");
+                await JSRuntime.InvokeVoidAsync("sessionStorage.removeItem", "selectedDifficulty");
+            }
+        }
+        catch
+        {
+            // Session storage not available or other error
+        }
+    }
+
+    private async Task StartGame()
+    {
+        // Set player names
+        if (playerXType == "human")
+        {
+            if (string.IsNullOrWhiteSpace(playerXName))
+                return;
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(selectedXBot))
+                return;
+            playerXName = $"{availableBots[selectedXBot].Name} ({xBotDifficulty})";
+        }
+        
+        if (playerOType == "human")
+        {
+            if (string.IsNullOrWhiteSpace(playerOName))
+                return;
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(selectedOBot))
+                return;
+            playerOName = $"{availableBots[selectedOBot].Name} ({oBotDifficulty})";
+        }
+        
+        // Create bot instances
+        if (playerXType == "bot")
+        {
+            var difficulty = Enum.Parse<BotDifficulty>(xBotDifficulty);
+            xBot = await BotService.CreateBot(selectedXBot, difficulty);
+        }
+        else
+        {
+            xBot = null;
+        }
+        
+        if (playerOType == "bot")
+        {
+            var difficulty = Enum.Parse<BotDifficulty>(oBotDifficulty);
+            oBot = await BotService.CreateBot(selectedOBot, difficulty);
+        }
+        else
+        {
+            oBot = null;
+        }
+        
         gameStarted = true;
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
         StartMoveTimer();
+        
+        // If X is a bot and goes first, make the first move
+        if (game.CurrentPlayer == CellState.X && xBot != null)
+        {
+            _ = Task.Run(async () => await MakeBotMove());
+        }
     }
 
     private void BackToSetup()
@@ -206,6 +363,17 @@
         game = new UltimateBoard();
         nextGameStarter = CellState.X; // Reset to X when changing players
         StopTimer();
+        
+        // Reset bot instances
+        xBot = null;
+        oBot = null;
+        isBotThinking = false;
+        
+        // Reset player types to human for fresh setup
+        playerXType = "human";
+        playerOType = "human";
+        selectedXBot = "";
+        selectedOBot = "";
     }
 
     private void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
@@ -224,6 +392,16 @@
             {
                 StopTimer();
             }
+            
+            // Trigger bot move if it's a bot's turn
+            if (game.State == BoardState.Active && !isBotThinking)
+            {
+                var currentBot = game.CurrentPlayer == CellState.X ? xBot : oBot;
+                if (currentBot != null)
+                {
+                    _ = Task.Run(async () => await MakeBotMove());
+                }
+            }
         }
         
         // Check if the game just ended and update scores
@@ -241,6 +419,50 @@
             // Swap the starting player for the next game
             nextGameStarter = nextGameStarter == CellState.X ? CellState.O : CellState.X;
         }
+    }
+
+    private async Task MakeBotMove()
+    {
+        if (isBotThinking || game.State != BoardState.Active)
+            return;
+            
+        isBotThinking = true;
+        await InvokeAsync(StateHasChanged);
+        
+        try
+        {
+            // Add a small delay to make bot moves visible
+            await Task.Delay(500);
+            
+            var currentBot = game.CurrentPlayer == CellState.X ? xBot : oBot;
+            if (currentBot != null)
+            {
+                var botMove = currentBot.GetMove(game);
+                
+                await InvokeAsync(() =>
+                {
+                    MakeMove(botMove.BoardRow, botMove.BoardCol, botMove.CellRow, botMove.CellCol);
+                });
+            }
+        }
+        finally
+        {
+            isBotThinking = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private bool IsStartGameEnabled()
+    {
+        if (playerXType == "human" && string.IsNullOrWhiteSpace(playerXName))
+            return false;
+        if (playerXType == "bot" && string.IsNullOrEmpty(selectedXBot))
+            return false;
+        if (playerOType == "human" && string.IsNullOrWhiteSpace(playerOName))
+            return false;
+        if (playerOType == "bot" && string.IsNullOrEmpty(selectedOBot))
+            return false;
+        return true;
     }
 
     private void StartMoveTimer()
@@ -347,6 +569,12 @@
         if (game.Boards[boardRow, boardCol].State != BoardState.Active) return false;
         if (game.Boards[boardRow, boardCol].Cells[cellRow, cellCol].State != CellState.Empty) return false;
         
+        // Don't allow human moves when bot is thinking or when it's a bot's turn
+        if (isBotThinking) return false;
+        
+        var currentBot = game.CurrentPlayer == CellState.X ? xBot : oBot;
+        if (currentBot != null) return false; // It's a bot's turn
+        
         if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
         {
             return boardRow == game.NextBoardRow.Value && boardCol == game.NextBoardCol.Value;
@@ -394,7 +622,18 @@
     {
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
+        isBotThinking = false;
         StartMoveTimer();
+        
+        // If the starting player is a bot, make the first move
+        if (game.CurrentPlayer == CellState.X && xBot != null)
+        {
+            _ = Task.Run(async () => await MakeBotMove());
+        }
+        else if (game.CurrentPlayer == CellState.O && oBot != null)
+        {
+            _ = Task.Run(async () => await MakeBotMove());
+        }
     }
 
     private string GetBoardPositionName(int row, int col)
