@@ -1,14 +1,10 @@
 using UltimateTicTacToeBlazor.Components;
-using UltimateTicTacToeBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-
-// Add bot service
-builder.Services.AddSingleton<BotService>();
 
 var app = builder.Build();
 

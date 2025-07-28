@@ -9,21 +9,6 @@ public class UltimateBoard
     public int? NextBoardCol { get; private set; } = null;
 
     public CellState CurrentPlayer { get; private set; } = CellState.X;
-    
-    // Compatibility properties for UI and training
-    public SmallBoard[,] SmallBoards => Boards;
-    public BoardState GameState => State;
-    public (int, int)? RequiredBoard => NextBoardRow.HasValue && NextBoardCol.HasValue 
-        ? (NextBoardRow.Value, NextBoardCol.Value) : null;
-    
-    public CellState Winner => State switch
-    {
-        BoardState.WonByX => CellState.X,
-        BoardState.WonByO => CellState.O,
-        _ => CellState.Empty
-    };
-    
-    public bool IsGameOver() => State != BoardState.Active;
 
     public UltimateBoard()
     {
