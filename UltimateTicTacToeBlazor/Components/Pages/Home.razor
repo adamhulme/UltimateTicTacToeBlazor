@@ -656,7 +656,14 @@
     {
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
+        // Ensure bot instance exists if single-player is enabled
+        bot = playVsBot ? (bot ?? new AI.SimpleBot()) : null;
         StartMoveTimer();
+        // If bot starts the new game, trigger its move
+        if (playVsBot && game.CurrentPlayer == botPlays)
+        {
+            _ = MakeBotMoveAsync();
+        }
     }
 
     private string GetBoardPositionName(int row, int col)
