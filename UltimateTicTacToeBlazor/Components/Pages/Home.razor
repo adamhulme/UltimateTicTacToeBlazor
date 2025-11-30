@@ -32,6 +32,12 @@
                 </div>
                 @if (playVsBot)
                 {
+                    <div class="alert alert-info" role="alert">
+                        Bot games use Unlimited time control.
+                    </div>
+                }
+                @if (playVsBot)
+                {
                     <div class="bot-side">
                         <label>Bot plays:</label>
                         <InputSelect @bind-Value="botPlays">
@@ -61,49 +67,49 @@
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="blitz" name="gameMode" value="Blitz" @onchange="() => selectedGameMode = GameMode.Blitz" checked="@(selectedGameMode == GameMode.Blitz)" />
+                        <input type="radio" id="blitz" name="gameMode" value="Blitz" @onchange="() => selectedGameMode = GameMode.Blitz" checked="@(selectedGameMode == GameMode.Blitz)" disabled="@playVsBot" />
                         <label for="blitz">
                             <strong>Blitz</strong>
                             <small>30 seconds per move</small>
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="rapid" name="gameMode" value="Rapid" @onchange="() => selectedGameMode = GameMode.Rapid" checked="@(selectedGameMode == GameMode.Rapid)" />
+                        <input type="radio" id="rapid" name="gameMode" value="Rapid" @onchange="() => selectedGameMode = GameMode.Rapid" checked="@(selectedGameMode == GameMode.Rapid)" disabled="@playVsBot" />
                         <label for="rapid">
                             <strong>Rapid</strong>
                             <small>60 seconds per move</small>
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="chess5" name="gameMode" value="Chess5" @onchange="() => selectedGameMode = GameMode.Chess5" checked="@(selectedGameMode == GameMode.Chess5)" />
+                        <input type="radio" id="chess5" name="gameMode" value="Chess5" @onchange="() => selectedGameMode = GameMode.Chess5" checked="@(selectedGameMode == GameMode.Chess5)" disabled="@playVsBot" />
                         <label for="chess5">
                             <strong>Chess Clock 5'</strong>
                             <small>5 minutes per player</small>
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="chess10" name="gameMode" value="Chess10" @onchange="() => selectedGameMode = GameMode.Chess10" checked="@(selectedGameMode == GameMode.Chess10)" />
+                        <input type="radio" id="chess10" name="gameMode" value="Chess10" @onchange="() => selectedGameMode = GameMode.Chess10" checked="@(selectedGameMode == GameMode.Chess10)" disabled="@playVsBot" />
                         <label for="chess10">
                             <strong>Chess Clock 10'</strong>
                             <small>10 minutes per player</small>
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="chess5inc3" name="gameMode" value="Chess5Inc3" @onchange="() => selectedGameMode = GameMode.Chess5Inc3" checked="@(selectedGameMode == GameMode.Chess5Inc3)" />
+                        <input type="radio" id="chess5inc3" name="gameMode" value="Chess5Inc3" @onchange="() => selectedGameMode = GameMode.Chess5Inc3" checked="@(selectedGameMode == GameMode.Chess5Inc3)" disabled="@playVsBot" />
                         <label for="chess5inc3">
                             <strong>5 | 3</strong>
                             <small>5 minutes, 3s increment</small>
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="chess10inc5" name="gameMode" value="Chess10Inc5" @onchange="() => selectedGameMode = GameMode.Chess10Inc5" checked="@(selectedGameMode == GameMode.Chess10Inc5)" />
+                        <input type="radio" id="chess10inc5" name="gameMode" value="Chess10Inc5" @onchange="() => selectedGameMode = GameMode.Chess10Inc5" checked="@(selectedGameMode == GameMode.Chess10Inc5)" disabled="@playVsBot" />
                         <label for="chess10inc5">
                             <strong>10 | 5</strong>
                             <small>10 minutes, 5s increment</small>
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="custom" name="gameMode" value="Custom" @onchange="() => selectedGameMode = GameMode.Custom" checked="@(selectedGameMode == GameMode.Custom)" />
+                        <input type="radio" id="custom" name="gameMode" value="Custom" @onchange="() => selectedGameMode = GameMode.Custom" checked="@(selectedGameMode == GameMode.Custom)" disabled="@playVsBot" />
                         <label for="custom">
                             <strong>Custom</strong>
                             <small>Total time + increment</small>
@@ -115,11 +121,11 @@
                     <div class="custom-time-controls">
                         <div class="control">
                             <label>Total Minutes (per player)</label>
-                            <input type="number" min="1" max="180" @bind="customTotalMinutes" />
+                            <input type="number" min="1" max="180" @bind="customTotalMinutes" disabled="@playVsBot" />
                         </div>
                         <div class="control">
                             <label>Increment Seconds (per move)</label>
-                            <input type="number" min="0" max="60" @bind="customIncrementSeconds" />
+                            <input type="number" min="0" max="60" @bind="customIncrementSeconds" disabled="@playVsBot" />
                         </div>
                     </div>
                 }
@@ -272,7 +278,19 @@
     private GameMode selectedGameMode = GameMode.Unlimited;
     private int customTotalMinutes = 10; // default for custom/chess clock
     private int customIncrementSeconds = 0; // default increment
-    private bool playVsBot = false;
+    private bool _playVsBot = false;
+    private bool playVsBot
+    {
+        get => _playVsBot;
+        set
+        {
+            _playVsBot = value;
+            if (_playVsBot)
+            {
+                selectedGameMode = GameMode.Unlimited;
+            }
+        }
+    }
     private CellState botPlays = CellState.O;
     private IBot? bot;
     private enum BotDifficulty { Easy, Medium, Hard }
