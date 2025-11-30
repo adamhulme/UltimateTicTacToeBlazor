@@ -294,7 +294,20 @@
     private CellState botPlays = CellState.O;
     private IBot? bot;
     private enum BotDifficulty { Easy, Medium, Hard }
-    private BotDifficulty botDifficulty = BotDifficulty.Medium;
+    private BotDifficulty _botDifficulty = BotDifficulty.Medium;
+    private BotDifficulty botDifficulty
+    {
+        get => _botDifficulty;
+        set
+        {
+            _botDifficulty = value;
+            // Reflect difficulty in bot name immediately when changing setting
+            if (playVsBot)
+            {
+                SetBotPlayerName();
+            }
+        }
+    }
     private const int ThinkingDelayMs = 700; // bot "thinking" delay
     
     // Timer-related variables
@@ -304,6 +317,30 @@
     private int remainingTimeO = 0; // chess clock total for O
     private bool isTimerRunning = false;
     private const string BotDefaultName = "Bot";
+    private string GetBotDisplayName()
+    {
+        var diff = botDifficulty switch
+        {
+            BotDifficulty.Easy => "Easy",
+            BotDifficulty.Medium => "Medium",
+            BotDifficulty.Hard => "Hard",
+            _ => "Medium"
+        };
+        return $"{BotDefaultName} ({diff})";
+    }
+
+    private void SetBotPlayerName()
+    {
+        var botName = GetBotDisplayName();
+        if (botPlays == CellState.X)
+        {
+            playerXName = botName;
+        }
+        else
+        {
+            playerOName = botName;
+        }
+    }
 
     private void StartGame()
     {
@@ -313,14 +350,8 @@
         // Assign bot name automatically if needed
         if (playVsBot)
         {
-            if (botPlays == CellState.X)
-            {
-                playerXName = string.IsNullOrWhiteSpace(playerXName) ? BotDefaultName : playerXName;
-            }
-            else
-            {
-                playerOName = string.IsNullOrWhiteSpace(playerOName) ? BotDefaultName : playerOName;
-            }
+            // Always set bot name to include difficulty tag
+            SetBotPlayerName();
         }
         bot = playVsBot ? CreateBot() : null;
 
