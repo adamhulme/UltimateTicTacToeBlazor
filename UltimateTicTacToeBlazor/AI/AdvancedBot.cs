@@ -54,7 +54,8 @@ public class AdvancedBot : IBot
             {
                 var cloned = CloneBoard(board);
                 cloned.MakeMove(mv.br, mv.bc, mv.cr, mv.cc);
-                value = Math.Max(value, Minimax(cloned, depth - 1, false, maximizingPlayer, alpha, beta));
+                var routeDelta = RoutingPenaltyBonus(cloned, maximizingPlayer);
+                value = Math.Max(value, routeDelta + Minimax(cloned, depth - 1, false, maximizingPlayer, alpha, beta));
                 alpha = Math.Max(alpha, value);
                 if (beta <= alpha) break;
             }
@@ -67,7 +68,8 @@ public class AdvancedBot : IBot
             {
                 var cloned = CloneBoard(board);
                 cloned.MakeMove(mv.br, mv.bc, mv.cr, mv.cc);
-                value = Math.Min(value, Minimax(cloned, depth - 1, true, maximizingPlayer, alpha, beta));
+                var routeDelta = RoutingPenaltyBonus(cloned, maximizingPlayer);
+                value = Math.Min(value, routeDelta + Minimax(cloned, depth - 1, true, maximizingPlayer, alpha, beta));
                 beta = Math.Min(beta, value);
                 if (beta <= alpha) break;
             }
@@ -139,6 +141,51 @@ public class AdvancedBot : IBot
         }
         if (board.State == BoardState.Draw) return 0;
         return score;
+    }
+
+    private double RoutingPenaltyBonus(UltimateBoard afterMove, CellState maximizingPlayer)
+    {
+        // After a move, opponent is the current player on afterMove
+        var opponent = afterMove.CurrentPlayer;
+        if (!afterMove.NextBoardRow.HasValue || !afterMove.NextBoardCol.HasValue)
+        {
+            // Free move next: penalize, and more if many boards are inactive (opponent has flexible choice)
+            int inactive = 0;
+            for (int r=0;r<3;r++)
+                for (int c=0;c<3;c++)
+                    if (afterMove.Boards[r,c].State != BoardState.Active) inactive++;
+            return -Math.Max(1, inactive) * 0.8; // modest penalty
+        }
+
+        int tr = afterMove.NextBoardRow.Value;
+        int tc = afterMove.NextBoardCol.Value;
+        var target = afterMove.Boards[tr, tc];
+
+        // If target board is inactive, opponent gets a free move anywhere: penalize
+        if (target.State != BoardState.Active)
+        {
+            return -6.0;
+        }
+
+        double delta = 0.0;
+        // Penalize sending opponent to meta-center (1,1) as it is highly influential
+        if (tr == 1 && tc == 1)
+        {
+            delta -= 8.0;
+        }
+
+        // Estimate opponent potential in the target board; subtract a portion to avoid gifting initiative
+        double oppPot = EvaluateSmallBoard(target, opponent);
+        delta -= oppPot * 0.2;
+
+        // Slight bonus if target board is nearly full (few opportunities for opponent)
+        int empty = 0;
+        for (int i=0;i<3;i++)
+            for (int j=0;j<3;j++)
+                if (target.Cells[i,j].State == CellState.Empty) empty++;
+        if (empty <= 2) delta += 2.5;
+
+        return delta;
     }
 
     private double EvaluateSmallBoard(SmallBoard sb, CellState player)
