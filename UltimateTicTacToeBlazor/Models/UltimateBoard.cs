@@ -129,4 +129,10 @@ public class UltimateBoard
     {
         CurrentPlayer = startingPlayer;
     }
+
+    public void LoseOnTime(CellState timedOutPlayer)
+    {
+        if (State != BoardState.Active) return;
+        State = timedOutPlayer == CellState.X ? BoardState.WonByO : BoardState.WonByX;
+    }
 }

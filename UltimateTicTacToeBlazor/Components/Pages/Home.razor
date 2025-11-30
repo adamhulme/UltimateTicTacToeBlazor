@@ -54,6 +54,27 @@
                             <small>3 minutes per move</small>
                         </label>
                     </div>
+                    <div class="mode-option">
+                        <input type="radio" id="chess5" name="gameMode" value="Chess5" @onchange="() => selectedGameMode = GameMode.Chess5" checked="@(selectedGameMode == GameMode.Chess5)" />
+                        <label for="chess5">
+                            <strong>Chess Clock 5'</strong>
+                            <small>5 minutes per player</small>
+                        </label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="chess10" name="gameMode" value="Chess10" @onchange="() => selectedGameMode = GameMode.Chess10" checked="@(selectedGameMode == GameMode.Chess10)" />
+                        <label for="chess10">
+                            <strong>Chess Clock 10'</strong>
+                            <small>10 minutes per player</small>
+                        </label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="chess15" name="gameMode" value="Chess15" @onchange="() => selectedGameMode = GameMode.Chess15" checked="@(selectedGameMode == GameMode.Chess15)" />
+                        <label for="chess15">
+                            <strong>Chess Clock 15'</strong>
+                            <small>15 minutes per player</small>
+                        </label>
+                    </div>
                 </div>
             </div>
             
@@ -85,10 +106,26 @@
                     
                     @if (selectedGameMode != GameMode.Unlimited)
                     {
-                        <div class="timer-display">
-                            <span class="timer-label">Time remaining:</span>
-                            <span class="timer-value @GetTimerClass()">@FormatTime(remainingTime)</span>
-                        </div>
+                        @if (IsChessClockMode())
+                        {
+                            <div class="timer-display chess-clock">
+                                <div class="player-clock @(game.CurrentPlayer == CellState.X ? "active" : "")">
+                                    <span class="player-name">@playerXName (X)</span>
+                                    <span class="timer-value @GetTimerClass(CurrentPlayerRemainingTime())">@FormatTime(remainingTimeX)</span>
+                                </div>
+                                <div class="player-clock @(game.CurrentPlayer == CellState.O ? "active" : "")">
+                                    <span class="player-name">@playerOName (O)</span>
+                                    <span class="timer-value @GetTimerClass(CurrentPlayerRemainingTime())">@FormatTime(remainingTimeO)</span>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="timer-display">
+                                <span class="timer-label">Time remaining:</span>
+                                <span class="timer-value @GetTimerClass(remainingTime)">@FormatTime(remainingTime)</span>
+                            </div>
+                        }
                     }
                     
                     @if (game.NextBoardRow.HasValue && game.NextBoardCol.HasValue)
@@ -189,7 +226,9 @@
     
     // Timer-related variables
     private Timer? moveTimer;
-    private int remainingTime = 0;
+    private int remainingTime = 0; // per-move modes
+    private int remainingTimeX = 0; // chess clock total for X
+    private int remainingTimeO = 0; // chess clock total for O
     private bool isTimerRunning = false;
 
     private void StartGame()
@@ -197,6 +236,7 @@
         gameStarted = true;
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
+        InitializeTimers();
         StartMoveTimer();
     }
 
@@ -206,6 +246,9 @@
         game = new UltimateBoard();
         nextGameStarter = CellState.X; // Reset to X when changing players
         StopTimer();
+        remainingTime = 0;
+        remainingTimeX = 0;
+        remainingTimeO = 0;
     }
 
     private void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
@@ -215,10 +258,17 @@
         
         if (success)
         {
-            // Reset timer for next player
+            // Switch active clock to next player
             if (selectedGameMode != GameMode.Unlimited && game.State == BoardState.Active)
             {
-                StartMoveTimer();
+                if (IsChessClockMode())
+                {
+                    StartMoveTimer(); // continue ticking for next player without resetting totals
+                }
+                else
+                {
+                    StartMoveTimer(); // per-move modes reset
+                }
             }
             else if (game.State != BoardState.Active)
             {
@@ -249,23 +299,63 @@
         
         if (selectedGameMode == GameMode.Unlimited) return;
         
-        remainingTime = GetTimeLimit();
+        if (IsChessClockMode())
+        {
+            // Do not reset totals; ensure we have initial totals
+            if (remainingTimeX == 0 && remainingTimeO == 0)
+            {
+                var total = GetTimeLimit();
+                remainingTimeX = total;
+                remainingTimeO = total;
+            }
+        }
+        else
+        {
+            remainingTime = GetTimeLimit();
+        }
         isTimerRunning = true;
         
         moveTimer = new Timer(async _ =>
         {
-            if (remainingTime > 0 && isTimerRunning && game.State == BoardState.Active)
+            if (isTimerRunning && game.State == BoardState.Active)
             {
-                remainingTime--;
-                await InvokeAsync(StateHasChanged);
-            }
-            else if (remainingTime <= 0 && isTimerRunning && game.State == BoardState.Active)
-            {
-                // Time's up - make a random valid move
-                await InvokeAsync(() =>
+                if (IsChessClockMode())
                 {
-                    TimeOutMove();
-                });
+                    if (game.CurrentPlayer == CellState.X)
+                    {
+                        remainingTimeX--;
+                        if (remainingTimeX <= 0)
+                        {
+                            await InvokeAsync(() => HandleTimeLoss(CellState.X));
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        remainingTimeO--;
+                        if (remainingTimeO <= 0)
+                        {
+                            await InvokeAsync(() => HandleTimeLoss(CellState.O));
+                            return;
+                        }
+                    }
+                    await InvokeAsync(StateHasChanged);
+                }
+                else
+                {
+                    if (remainingTime > 0)
+                    {
+                        remainingTime--;
+                        await InvokeAsync(StateHasChanged);
+                    }
+                    else
+                    {
+                        await InvokeAsync(() =>
+                        {
+                            TimeOutMove();
+                        });
+                    }
+                }
             }
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
@@ -284,8 +374,34 @@
             GameMode.Blitz => 30,
             GameMode.Rapid => 60,
             GameMode.Classical => 180,
+            GameMode.Chess5 => 300,
+            GameMode.Chess10 => 600,
+            GameMode.Chess15 => 900,
             _ => 0
         };
+    }
+
+    private bool IsChessClockMode()
+    {
+        return selectedGameMode == GameMode.Chess5 || selectedGameMode == GameMode.Chess10 || selectedGameMode == GameMode.Chess15;
+    }
+
+    private int CurrentPlayerRemainingTime()
+    {
+        return game.CurrentPlayer == CellState.X ? remainingTimeX : remainingTimeO;
+    }
+
+    private void InitializeTimers()
+    {
+        remainingTime = 0;
+        remainingTimeX = 0;
+        remainingTimeO = 0;
+        if (IsChessClockMode())
+        {
+            var total = GetTimeLimit();
+            remainingTimeX = total;
+            remainingTimeO = total;
+        }
     }
 
     private void TimeOutMove()
@@ -320,6 +436,27 @@
         StateHasChanged();
     }
 
+    private void HandleTimeLoss(CellState timedOutPlayer)
+    {
+        // Player who runs out of time loses; opponent wins
+        if (game.State == BoardState.Active)
+        {
+            game.LoseOnTime(timedOutPlayer);
+            if (timedOutPlayer == CellState.X)
+            {
+                playerOScore++;
+            }
+            else
+            {
+                playerXScore++;
+            }
+            // Swap the starting player for the next game
+            nextGameStarter = nextGameStarter == CellState.X ? CellState.O : CellState.X;
+            StopTimer();
+            StateHasChanged();
+        }
+    }
+
     private string FormatTime(int seconds)
     {
         if (seconds >= 60)
@@ -331,11 +468,11 @@
         return seconds.ToString();
     }
 
-    private string GetTimerClass()
+    private string GetTimerClass(int seconds)
     {
-        if (remainingTime <= 5)
+        if (seconds <= 5)
             return "timer-critical";
-        else if (remainingTime <= 10)
+        else if (seconds <= 10)
             return "timer-warning";
         else
             return "timer-normal";
