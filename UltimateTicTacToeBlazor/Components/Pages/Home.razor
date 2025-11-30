@@ -39,6 +39,14 @@
                             <option value="@CellState.O">O</option>
                         </InputSelect>
                     </div>
+                    <div class="bot-difficulty">
+                        <label>Difficulty:</label>
+                        <InputSelect @bind-Value="botDifficulty">
+                            <option value="@BotDifficulty.Easy">Easy</option>
+                            <option value="@BotDifficulty.Medium">Medium</option>
+                            <option value="@BotDifficulty.Hard">Hard</option>
+                        </InputSelect>
+                    </div>
                 }
             </div>
             
@@ -266,7 +274,9 @@
     private int customIncrementSeconds = 0; // default increment
     private bool playVsBot = false;
     private CellState botPlays = CellState.O;
-    private AI.SimpleBot? bot;
+    private IBot? bot;
+    private enum BotDifficulty { Easy, Medium, Hard }
+    private BotDifficulty botDifficulty = BotDifficulty.Medium;
     private const int ThinkingDelayMs = 700; // bot "thinking" delay
     
     // Timer-related variables
@@ -294,7 +304,7 @@
                 playerOName = string.IsNullOrWhiteSpace(playerOName) ? BotDefaultName : playerOName;
             }
         }
-        bot = playVsBot ? new AI.SimpleBot() : null;
+        bot = playVsBot ? CreateBot() : null;
 
         // If bot plays first, generate immediate bot move after timers init
         InitializeTimers();
@@ -657,13 +667,24 @@
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
         // Ensure bot instance exists if single-player is enabled
-        bot = playVsBot ? (bot ?? new AI.SimpleBot()) : null;
+        bot = playVsBot ? (bot ?? CreateBot()) : null;
         StartMoveTimer();
         // If bot starts the new game, trigger its move
         if (playVsBot && game.CurrentPlayer == botPlays)
         {
             _ = MakeBotMoveAsync();
         }
+    }
+
+    private IBot CreateBot()
+    {
+        return botDifficulty switch
+        {
+            BotDifficulty.Easy => new SimpleBot(),
+            BotDifficulty.Medium => new AdvancedBot(2),
+            BotDifficulty.Hard => new AdvancedBot(3),
+            _ => new SimpleBot()
+        };
     }
 
     private string GetBoardPositionName(int row, int col)
