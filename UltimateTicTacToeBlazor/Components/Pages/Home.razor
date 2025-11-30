@@ -1,5 +1,6 @@
 ﻿@page "/"
 @using UltimateTicTacToe.Models
+@using UltimateTicTacToeBlazor.AI
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -15,12 +16,30 @@
             <div class="player-inputs">
                 <div class="player-input">
                     <label for="playerX">Player X Name:</label>
-                    <input id="playerX" @bind="playerXName" placeholder="Enter Player X name" maxlength="20" />
+                    <input id="playerX" @bind="playerXName" placeholder="Enter Player X name" maxlength="20" disabled="@(playVsBot && botPlays == CellState.X)" />
                 </div>
                 <div class="player-input">
                     <label for="playerO">Player O Name:</label>
-                    <input id="playerO" @bind="playerOName" placeholder="Enter Player O name" maxlength="20" />
+                    <input id="playerO" @bind="playerOName" placeholder="Enter Player O name" maxlength="20" disabled="@(playVsBot && botPlays == CellState.O)" />
                 </div>
+            </div>
+
+            <div class="single-player">
+                <h4>Opponent</h4>
+                <div>
+                    <input type="checkbox" id="vsBot" @bind="playVsBot" />
+                    <label for="vsBot">Play vs Bot</label>
+                </div>
+                @if (playVsBot)
+                {
+                    <div class="bot-side">
+                        <label>Bot plays:</label>
+                        <InputSelect @bind-Value="botPlays">
+                            <option value="@CellState.X">X</option>
+                            <option value="@CellState.O">O</option>
+                        </InputSelect>
+                    </div>
+                }
             </div>
             
             <div class="game-mode-selection">
@@ -98,7 +117,7 @@
                 }
             </div>
             
-            <button class="btn btn-success start-game-btn" @onclick="StartGame" disabled="@(string.IsNullOrWhiteSpace(playerXName) || string.IsNullOrWhiteSpace(playerOName))">
+            <button class="btn btn-success start-game-btn" @onclick="StartGame" disabled="@(!CanStartGame())">
                 Start Game
             </button>
         </div>
@@ -245,6 +264,10 @@
     private GameMode selectedGameMode = GameMode.Unlimited;
     private int customTotalMinutes = 10; // default for custom/chess clock
     private int customIncrementSeconds = 0; // default increment
+    private bool playVsBot = false;
+    private CellState botPlays = CellState.O;
+    private AI.SimpleBot? bot;
+    private const int ThinkingDelayMs = 700; // bot "thinking" delay
     
     // Timer-related variables
     private Timer? moveTimer;
@@ -252,14 +275,35 @@
     private int remainingTimeX = 0; // chess clock total for X
     private int remainingTimeO = 0; // chess clock total for O
     private bool isTimerRunning = false;
+    private const string BotDefaultName = "Bot";
 
     private void StartGame()
     {
         gameStarted = true;
         game = new UltimateBoard();
         game.SetStartingPlayer(nextGameStarter);
+        // Assign bot name automatically if needed
+        if (playVsBot)
+        {
+            if (botPlays == CellState.X)
+            {
+                playerXName = string.IsNullOrWhiteSpace(playerXName) ? BotDefaultName : playerXName;
+            }
+            else
+            {
+                playerOName = string.IsNullOrWhiteSpace(playerOName) ? BotDefaultName : playerOName;
+            }
+        }
+        bot = playVsBot ? new AI.SimpleBot() : null;
+
+        // If bot plays first, generate immediate bot move after timers init
         InitializeTimers();
         StartMoveTimer();
+
+        if (playVsBot && game.CurrentPlayer == botPlays)
+        {
+            _ = MakeBotMoveAsync();
+        }
     }
 
     private void BackToSetup()
@@ -273,8 +317,11 @@
         remainingTimeO = 0;
     }
 
-    private void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
+    private async void MakeMove(int boardRow, int boardCol, int cellRow, int cellCol, bool isBot = false)
     {
+        // Prevent human moving during bot turn (bot bypasses this)
+        if (!isBot && playVsBot && game.State == BoardState.Active && game.CurrentPlayer == botPlays)
+            return;
         var previousState = game.State;
         bool success = game.MakeMove(boardRow, boardCol, cellRow, cellCol);
         
@@ -317,6 +364,26 @@
             
             // Swap the starting player for the next game
             nextGameStarter = nextGameStarter == CellState.X ? CellState.O : CellState.X;
+        }
+
+        // If playing vs bot and it's now bot's turn, let bot move
+        if (success && playVsBot && game.State == BoardState.Active && game.CurrentPlayer == botPlays)
+        {
+            await MakeBotMoveAsync();
+        }
+    }
+
+    private async Task MakeBotMoveAsync()
+    {
+        if (bot == null) return;
+        // small delay to feign thinking
+        await Task.Delay(ThinkingDelayMs);
+        var move = bot.ChooseMove(game);
+        if (move.HasValue)
+        {
+            var (br, bc, cr, cc) = move.Value;
+            MakeMove(br, bc, cr, cc, isBot: true);
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -538,6 +605,7 @@
     private bool CanMakeMove(int boardRow, int boardCol, int cellRow, int cellCol)
     {
         if (game.State != BoardState.Active) return false;
+        if (playVsBot && game.CurrentPlayer == botPlays) return false; // human cannot move on bot's turn
         if (game.Boards[boardRow, boardCol].State != BoardState.Active) return false;
         if (game.Boards[boardRow, boardCol].Cells[cellRow, cellCol].State != CellState.Empty) return false;
         
@@ -611,5 +679,16 @@
     public void Dispose()
     {
         StopTimer();
+    }
+
+    private bool CanStartGame()
+    {
+        if (!playVsBot)
+            return !string.IsNullOrWhiteSpace(playerXName) && !string.IsNullOrWhiteSpace(playerOName);
+        // Single player: require only the human name for the side opposite bot
+        if (botPlays == CellState.X)
+            return !string.IsNullOrWhiteSpace(playerOName);
+        else
+            return !string.IsNullOrWhiteSpace(playerXName);
     }
 }
