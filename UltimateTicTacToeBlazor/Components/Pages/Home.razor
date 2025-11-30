@@ -48,13 +48,6 @@
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="classical" name="gameMode" value="Classical" @onchange="() => selectedGameMode = GameMode.Classical" checked="@(selectedGameMode == GameMode.Classical)" />
-                        <label for="classical">
-                            <strong>Classical</strong>
-                            <small>3 minutes per move</small>
-                        </label>
-                    </div>
-                    <div class="mode-option">
                         <input type="radio" id="chess5" name="gameMode" value="Chess5" @onchange="() => selectedGameMode = GameMode.Chess5" checked="@(selectedGameMode == GameMode.Chess5)" />
                         <label for="chess5">
                             <strong>Chess Clock 5'</strong>
@@ -69,13 +62,40 @@
                         </label>
                     </div>
                     <div class="mode-option">
-                        <input type="radio" id="chess15" name="gameMode" value="Chess15" @onchange="() => selectedGameMode = GameMode.Chess15" checked="@(selectedGameMode == GameMode.Chess15)" />
-                        <label for="chess15">
-                            <strong>Chess Clock 15'</strong>
-                            <small>15 minutes per player</small>
+                        <input type="radio" id="chess5inc3" name="gameMode" value="Chess5Inc3" @onchange="() => selectedGameMode = GameMode.Chess5Inc3" checked="@(selectedGameMode == GameMode.Chess5Inc3)" />
+                        <label for="chess5inc3">
+                            <strong>5 | 3</strong>
+                            <small>5 minutes, 3s increment</small>
+                        </label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="chess10inc5" name="gameMode" value="Chess10Inc5" @onchange="() => selectedGameMode = GameMode.Chess10Inc5" checked="@(selectedGameMode == GameMode.Chess10Inc5)" />
+                        <label for="chess10inc5">
+                            <strong>10 | 5</strong>
+                            <small>10 minutes, 5s increment</small>
+                        </label>
+                    </div>
+                    <div class="mode-option">
+                        <input type="radio" id="custom" name="gameMode" value="Custom" @onchange="() => selectedGameMode = GameMode.Custom" checked="@(selectedGameMode == GameMode.Custom)" />
+                        <label for="custom">
+                            <strong>Custom</strong>
+                            <small>Total time + increment</small>
                         </label>
                     </div>
                 </div>
+                @if (selectedGameMode == GameMode.Custom)
+                {
+                    <div class="custom-time-controls">
+                        <div class="control">
+                            <label>Total Minutes (per player)</label>
+                            <input type="number" min="1" max="180" @bind="customTotalMinutes" />
+                        </div>
+                        <div class="control">
+                            <label>Increment Seconds (per move)</label>
+                            <input type="number" min="0" max="60" @bind="customIncrementSeconds" />
+                        </div>
+                    </div>
+                }
             </div>
             
             <button class="btn btn-success start-game-btn" @onclick="StartGame" disabled="@(string.IsNullOrWhiteSpace(playerXName) || string.IsNullOrWhiteSpace(playerOName))">
@@ -223,6 +243,8 @@
     private int playerOScore = 0;
     private CellState nextGameStarter = CellState.X; // Track who should start the next game
     private GameMode selectedGameMode = GameMode.Unlimited;
+    private int customTotalMinutes = 10; // default for custom/chess clock
+    private int customIncrementSeconds = 0; // default increment
     
     // Timer-related variables
     private Timer? moveTimer;
@@ -258,6 +280,11 @@
         
         if (success)
         {
+            // Apply increment for chess clock modes after a successful move
+            if (selectedGameMode != GameMode.Unlimited && IsChessClockMode())
+            {
+                ApplyIncrementToPlayer(game.CurrentPlayer == CellState.X ? CellState.O : CellState.X);
+            }
             // Switch active clock to next player
             if (selectedGameMode != GameMode.Unlimited && game.State == BoardState.Active)
             {
@@ -373,17 +400,18 @@
         {
             GameMode.Blitz => 30,
             GameMode.Rapid => 60,
-            GameMode.Classical => 180,
             GameMode.Chess5 => 300,
             GameMode.Chess10 => 600,
-            GameMode.Chess15 => 900,
+            GameMode.Chess5Inc3 => 300,
+            GameMode.Chess10Inc5 => 600,
+            GameMode.Custom => Math.Max(60, customTotalMinutes * 60),
             _ => 0
         };
     }
 
     private bool IsChessClockMode()
     {
-        return selectedGameMode == GameMode.Chess5 || selectedGameMode == GameMode.Chess10 || selectedGameMode == GameMode.Chess15;
+        return selectedGameMode == GameMode.Chess5 || selectedGameMode == GameMode.Chess10 || selectedGameMode == GameMode.Chess5Inc3 || selectedGameMode == GameMode.Chess10Inc5 || selectedGameMode == GameMode.Custom;
     }
 
     private int CurrentPlayerRemainingTime()
@@ -402,6 +430,35 @@
             remainingTimeX = total;
             remainingTimeO = total;
         }
+    }
+
+    private void ApplyIncrementToPlayer(CellState player)
+    {
+        var increment = GetIncrementSeconds();
+        if (increment <= 0) return;
+        if (player == CellState.X)
+        {
+            remainingTimeX += increment;
+        }
+        else
+        {
+            remainingTimeO += increment;
+        }
+    }
+
+    private int GetIncrementSeconds()
+    {
+        if (selectedGameMode == GameMode.Custom)
+        {
+            return Math.Clamp(customIncrementSeconds, 0, 60);
+        }
+        // Built-in increments
+        return selectedGameMode switch
+        {
+            GameMode.Chess5Inc3 => 3,
+            GameMode.Chess10Inc5 => 5,
+            _ => 0
+        };
     }
 
     private void TimeOutMove()
